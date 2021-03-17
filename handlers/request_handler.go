@@ -138,19 +138,20 @@ func (h *Handler) startReceiving(requestChan chan *Request) {
 		}
 		log.Println("handling action", request.Action)
 
-		result, err := reflectutil.Call(actionHandler, request.Action, request.Data...)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+		go func() {
+			result, err := reflectutil.Call(actionHandler, request.Action, request.Data...)
+			if err != nil {
+				log.Println(err)
+				return
+			}
 
-		err = h.reply(&Response{
-			Id:   request.Id,
-			Data: result,
-		})
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+			err = h.reply(&Response{
+				Id:   request.Id,
+				Data: result,
+			})
+			if err != nil {
+				log.Println(err)
+			}
+		}()
 	}
 }
