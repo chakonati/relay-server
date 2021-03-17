@@ -76,6 +76,10 @@ func (h *Handler) Handle() {
 	for {
 		var msgType websocket.MessageType
 		msgType, byt, err = h.Session.Conn.Read(h.context)
+		if err != nil {
+			log.Println(err)
+			break
+		}
 		if len(byt) == 0 {
 			continue
 		}
