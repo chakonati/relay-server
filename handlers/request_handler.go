@@ -16,13 +16,13 @@ import (
 const bufSize = 512
 
 type Request struct {
-	Id     uint64        `key:"id"`
+	Id     int64         `key:"id"`
 	Action string        `key:"action"`
 	Data   []interface{} `key:"data"`
 }
 
 type Response struct {
-	Id   uint64        `key:"id"`
+	Id   int64         `key:"id"`
 	Data []interface{} `key:"data"`
 }
 
