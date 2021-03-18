@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"server/handlers"
+	"server/persistence"
 	"server/session"
 	"strconv"
 
@@ -38,7 +39,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}).Handle()
 }
 
-func main() {
+func useEnv() {
 	if listenPortEnv, exists := os.LookupEnv("PORT"); exists {
 		port, err := strconv.Atoi(listenPortEnv)
 		if err != nil {
@@ -53,10 +54,20 @@ func main() {
 		}
 		listenAddr = listenAddrEnv
 	}
+}
 
+func startHTTP() {
 	http.HandleFunc("/", handler)
 
 	listenOn := fmt.Sprintf("%s:%d", listenAddr, listenPort)
 	log.Println("Listening on", listenOn)
 	log.Fatal(http.ListenAndServe(listenOn, nil))
+}
+
+func main() {
+	useEnv()
+	if err := persistence.InitDatabases(); err != nil {
+		log.Fatal("Failed to initialize databases:", err)
+	}
+	startHTTP()
 }

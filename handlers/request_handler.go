@@ -8,8 +8,6 @@ import (
 	"server/encoders"
 	"server/session"
 
-	"github.com/stoewer/go-strcase"
-
 	"gitlab.com/xdevs23/go-reflectutil/reflectutil"
 
 	"nhooyr.io/websocket"
@@ -145,7 +143,7 @@ func (h *Handler) startReceiving(requestChan chan *Request) {
 		log.Println("handling action", request.Action)
 
 		go func() {
-			result, err := reflectutil.CallPath(actionHandler, strcase.UpperCamelCase(request.Action), request.Data...)
+			result, err := reflectutil.CallPath(actionHandler, request.Action, request.Data...)
 			if err != nil {
 				log.Println(err)
 				return
