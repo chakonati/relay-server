@@ -1,8 +1,9 @@
 package handlers
 
 type ActionHandler struct {
-	Handler *Handler
-	Request *Request
+	handler *Handler
+	request *Request
+
 }
 
 func (a *ActionHandler) Echo(echo string) string {
