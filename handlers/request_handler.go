@@ -2,11 +2,16 @@ package handlers
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"server/decoders"
 	"server/encoders"
 	"server/session"
+	"sync"
+	"time"
+
+	"github.com/pkg/errors"
 
 	"gitlab.com/xdevs23/go-reflectutil/reflectutil"
 
@@ -34,6 +39,8 @@ type Handler struct {
 	messageType    websocket.MessageType
 	requestChannel chan *Request
 }
+
+var runningRequests sync.WaitGroup
 
 func (h *Handler) Handle() {
 	h.context = context.Background()
@@ -77,7 +84,11 @@ func (h *Handler) Handle() {
 		var msgType websocket.MessageType
 		msgType, byt, err = h.Session.Conn.Read(h.context)
 		if err != nil {
-			log.Println(err)
+			if errors.Is(err, io.EOF) {
+				log.Println("EOF")
+				break
+			}
+			log.Println("websocket connection read error:", err)
 			break
 		}
 		if len(byt) == 0 {
@@ -90,22 +101,23 @@ func (h *Handler) Handle() {
 		if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
 			break
 		}
-		if err != nil {
-			log.Println(err)
-			break
-		}
 
 		request := Request{}
 		if err = h.decoder.Unmarshal(byt, &request); err != nil {
-			log.Println(err)
+			log.Println("decoder unmarshal error:", err)
 			break
 		}
 
+		runningRequests.Add(1)
 		h.requestChannel <- &request
 	}
 
 	close(requestChannel)
 
+	runningRequests.Wait()
+	ctx, cancelCtx := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	<-h.Session.Conn.CloseRead(ctx).Done()
+	cancelCtx()
 	if err != nil {
 		_ = h.Session.Conn.Close(http.StatusInternalServerError, "error")
 	} else {
@@ -143,12 +155,18 @@ func (h *Handler) startReceiving(requestChan chan *Request) {
 		log.Println("handling action", request.Action)
 
 		go func() {
-			result, err := reflectutil.CallPath(actionHandler, request.Action, request.Data...)
+			defer runningRequests.Done()
+			result, err := reflectutil.CallPathAutoConvert(actionHandler, request.Action, request.Data...)
 			if err != nil {
 				log.Println(err)
 				return
 			}
+			lastResult := result[len(result)-1]
+			if resultErr, isErr := lastResult.(error); isErr {
+				log.Printf("Error during call to %s: %v", request.Action, resultErr)
+			}
 
+			encoders.ConvertErrorsToString(&result)
 			err = h.reply(&Response{
 				Id:   request.Id,
 				Data: result,

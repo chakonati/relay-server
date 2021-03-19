@@ -27,12 +27,7 @@ func createDirectories() error {
 
 var commonDBOptions *bbolt.Options = nil
 
-func InitDatabases() error {
-	if err := createDirectories(); err != nil {
-		return errors.Wrap(err, "could not initialize databases")
-	}
-	var err error
-
+func initSetupDB() error {
 	setupDB, err := bbolt.Open(defs.SetupDatabase(), 0600, commonDBOptions)
 	if err != nil {
 		return errors.Wrap(err, "could not open setup database")
@@ -40,7 +35,10 @@ func InitDatabases() error {
 	setup = DB{
 		db: setupDB,
 	}
+	return nil
+}
 
+func initKeyDB() error {
 	keyDB, err := bbolt.Open(defs.KeyDatabase(), 0600, commonDBOptions)
 	if err != nil {
 		return errors.Wrap(err, "could not open key database")
@@ -48,7 +46,10 @@ func InitDatabases() error {
 	keys = DB{
 		db: keyDB,
 	}
+	return nil
+}
 
+func initMessageDB() error {
 	messageDB, err := bbolt.Open(defs.MessageDatabase(), 0600, commonDBOptions)
 	if err != nil {
 		return errors.Wrap(err, "could not open message database")
@@ -56,6 +57,32 @@ func InitDatabases() error {
 	messages = DB{
 		db: messageDB,
 	}
+	return nil
+}
 
+func initPersistenceHandlers() error {
+	if err := KeyExchange.init(); err != nil {
+		return errors.Wrap(err, "could not initialize key exchange persistence")
+	}
+
+	return nil
+}
+
+func InitDatabases() error {
+	if err := createDirectories(); err != nil {
+		return errors.Wrap(err, "could not initialize databases")
+	}
+	if err := initSetupDB(); err != nil {
+		return errors.Wrap(err, "could not initialize setup DB")
+	}
+	if err := initKeyDB(); err != nil {
+		return errors.Wrap(err, "couold not initialize key DB")
+	}
+	if err := initMessageDB(); err != nil {
+		return errors.Wrap(err, "could not initialize message DB")
+	}
+	if err := initPersistenceHandlers(); err != nil {
+		return errors.Wrap(err, "could not initialize persistence handlers")
+	}
 	return nil
 }
