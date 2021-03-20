@@ -41,3 +41,35 @@ func (k *KeyExchangeHandler) PublishPreKeyBundle(
 	}
 	return nil
 }
+
+func (k *KeyExchangeHandler) PreKeyBundle() (
+	registrationId int, deviceId int, preKeyId int,
+	publicPreKey []byte, signedPreKeyId int,
+	publicSignedPreKey []byte, signedPreKeySignature []byte,
+	identityKey []byte, err error,
+) {
+	keyExists, err := persistence.KeyExchange.PreKeyBundleExists()
+	if err != nil {
+		err = errors.Wrap(err, "failed to check if the pre-key bundle already exists")
+		return
+	}
+	if !keyExists {
+		err = errors.New("pre-key bundle does not exist")
+		return
+	}
+
+	preKeyBundle, err := persistence.KeyExchange.PreKeyBundle()
+	if err != nil {
+		err = errors.Wrap(err, "failed to retrieve pre-key bundle")
+	}
+
+	registrationId = preKeyBundle.RegistrationID
+	deviceId = preKeyBundle.DeviceID
+	preKeyId = preKeyBundle.PreKeyID
+	publicPreKey = preKeyBundle.PublicPreKey
+	signedPreKeyId = preKeyBundle.SignedPreKeyID
+	publicSignedPreKey = preKeyBundle.PublicSignedPreKey
+	signedPreKeySignature = preKeyBundle.SignedPreKeySignature
+	identityKey = preKeyBundle.IdentityKey
+	return
+}
