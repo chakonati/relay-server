@@ -27,3 +27,13 @@ func GetStruct(b *bbolt.Bucket, key []byte, out interface{}) error {
 	}
 	return nil
 }
+
+func initBucket(bucketName string) error {
+	return setup.db.Update(func(tx *bbolt.Tx) error {
+		_, err := tx.CreateBucketIfNotExists([]byte(bucketName))
+		if err != nil {
+			return errors.Wrap(err, "could not create or get bucket "+bucketName)
+		}
+		return nil
+	})
+}

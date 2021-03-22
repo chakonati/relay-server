@@ -9,6 +9,7 @@ type ActionHandler struct {
 	// Action handlers
 
 	KeyExchange actions.KeyExchangeHandler
+	Setup       actions.SetupHandler
 }
 
 func (a *ActionHandler) Echo(echo string) string {

@@ -19,13 +19,7 @@ var (
 var KeyExchange = KeyExchangeDAO{}
 
 func (k *KeyExchangeDAO) init() error {
-	return setup.db.Update(func(tx *bbolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(keyExchangeBucketName))
-		if err != nil {
-			return errors.Wrap(err, "could not create or get bucket "+keyExchangeBucketName)
-		}
-		return nil
-	})
+	return initBucket(keyExchangeBucketName)
 }
 
 func (k *KeyExchangeDAO) bucket(tx *bbolt.Tx) *bbolt.Bucket {
