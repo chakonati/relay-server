@@ -8,7 +8,7 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-type KeyExchangePersistence struct{}
+type KeyExchangeDAO struct{}
 
 const keyExchangeBucketName = "key_exchange"
 
@@ -16,9 +16,9 @@ var (
 	keyExchangePreKeyBundleKey = []byte("pre_key_bundle")
 )
 
-var KeyExchange = KeyExchangePersistence{}
+var KeyExchange = KeyExchangeDAO{}
 
-func (k *KeyExchangePersistence) init() error {
+func (k *KeyExchangeDAO) init() error {
 	return setup.db.Update(func(tx *bbolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte(keyExchangeBucketName))
 		if err != nil {
@@ -28,11 +28,11 @@ func (k *KeyExchangePersistence) init() error {
 	})
 }
 
-func (k *KeyExchangePersistence) Bucket(tx *bbolt.Tx) *bbolt.Bucket {
+func (k *KeyExchangeDAO) Bucket(tx *bbolt.Tx) *bbolt.Bucket {
 	return tx.Bucket([]byte(keyExchangeBucketName))
 }
 
-func (k *KeyExchangePersistence) StorePreKeyBundle(bundle defs.PreKeyBundle) error {
+func (k *KeyExchangeDAO) StorePreKeyBundle(bundle defs.PreKeyBundle) error {
 	return setup.db.Update(func(tx *bbolt.Tx) error {
 		if err := PutStruct(k.Bucket(tx), keyExchangePreKeyBundleKey, &bundle); err != nil {
 			return errors.Wrap(err, "could not store pre-key bundle")
@@ -42,7 +42,7 @@ func (k *KeyExchangePersistence) StorePreKeyBundle(bundle defs.PreKeyBundle) err
 	})
 }
 
-func (k *KeyExchangePersistence) PreKeyBundle() (*defs.PreKeyBundle, error) {
+func (k *KeyExchangeDAO) PreKeyBundle() (*defs.PreKeyBundle, error) {
 	var preKeyBundle *defs.PreKeyBundle
 	err := setup.db.View(func(tx *bbolt.Tx) error {
 		return GetStruct(k.Bucket(tx), keyExchangePreKeyBundleKey, &preKeyBundle)
@@ -53,7 +53,7 @@ func (k *KeyExchangePersistence) PreKeyBundle() (*defs.PreKeyBundle, error) {
 	return preKeyBundle, nil
 }
 
-func (k *KeyExchangePersistence) PreKeyBundleExists() (bool, error) {
+func (k *KeyExchangeDAO) PreKeyBundleExists() (bool, error) {
 	bundle, err := k.PreKeyBundle()
 	if err != nil {
 		// we return true here just in case the other end doesn't check the error

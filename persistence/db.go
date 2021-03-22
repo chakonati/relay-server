@@ -60,7 +60,7 @@ func initMessageDB() error {
 	return nil
 }
 
-func initPersistenceHandlers() error {
+func initDAOs() error {
 	if err := KeyExchange.init(); err != nil {
 		return errors.Wrap(err, "could not initialize key exchange persistence")
 	}
@@ -81,7 +81,7 @@ func InitDatabases() error {
 	if err := initMessageDB(); err != nil {
 		return errors.Wrap(err, "could not initialize message DB")
 	}
-	if err := initPersistenceHandlers(); err != nil {
+	if err := initDAOs(); err != nil {
 		return errors.Wrap(err, "could not initialize persistence handlers")
 	}
 	return nil
