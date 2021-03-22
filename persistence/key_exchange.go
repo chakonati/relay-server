@@ -28,13 +28,13 @@ func (k *KeyExchangeDAO) init() error {
 	})
 }
 
-func (k *KeyExchangeDAO) Bucket(tx *bbolt.Tx) *bbolt.Bucket {
+func (k *KeyExchangeDAO) bucket(tx *bbolt.Tx) *bbolt.Bucket {
 	return tx.Bucket([]byte(keyExchangeBucketName))
 }
 
 func (k *KeyExchangeDAO) StorePreKeyBundle(bundle defs.PreKeyBundle) error {
 	return setup.db.Update(func(tx *bbolt.Tx) error {
-		if err := PutStruct(k.Bucket(tx), keyExchangePreKeyBundleKey, &bundle); err != nil {
+		if err := PutStruct(k.bucket(tx), keyExchangePreKeyBundleKey, &bundle); err != nil {
 			return errors.Wrap(err, "could not store pre-key bundle")
 		}
 		log.Println("The pre-key bundle is now registered.")
@@ -45,7 +45,7 @@ func (k *KeyExchangeDAO) StorePreKeyBundle(bundle defs.PreKeyBundle) error {
 func (k *KeyExchangeDAO) PreKeyBundle() (*defs.PreKeyBundle, error) {
 	var preKeyBundle *defs.PreKeyBundle
 	err := setup.db.View(func(tx *bbolt.Tx) error {
-		return GetStruct(k.Bucket(tx), keyExchangePreKeyBundleKey, &preKeyBundle)
+		return GetStruct(k.bucket(tx), keyExchangePreKeyBundleKey, &preKeyBundle)
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve pre-key bundle")
