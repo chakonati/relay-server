@@ -6,35 +6,29 @@ import (
 	"server/crypto"
 	"server/defs"
 	"server/persistence"
-	"time"
 
 	"github.com/pkg/errors"
+	"go.step.sm/crypto/randutil"
 )
 
 type SetupHandler struct{}
 
-func (s *SetupHandler) SetPassword(oldPassword string, password string) error {
+const setupPasswordLenMin = 14
+const setupPasswordLenMax = 20
+
+func (s *SetupHandler) SetPassword() (string, error) {
 	passwordExists, err := persistence.Setup.PasswordExists()
 	if err != nil {
 		log.Println(err)
-		return errors.New("could not check if password exists")
+		return "", errors.New("could not check if password exists")
 	}
 	if passwordExists {
-		// first check if the old password matches
-		currentHash, err := persistence.Setup.PasswordHash()
-		if err != nil {
-			log.Println(err)
-			return errors.New("could not check current password")
-		}
-		matches, err := crypto.ScryptCompare([]byte(oldPassword), currentHash.Hash)
-		if err != nil {
-			log.Println(err)
-			return errors.New("could not compare passwords")
-		}
-		if !matches {
-			time.Sleep(2*time.Second + time.Duration(rand.Intn(1000))*time.Millisecond)
-			return errors.New("old password and hash does not match")
-		}
+		return "", errors.New("password has already been set")
+	}
+
+	password, err := randutil.Alphanumeric(setupPasswordLenMin + rand.Intn(setupPasswordLenMax-setupPasswordLenMin))
+	if err != nil {
+		return "", errors.New("could not generate new password")
 	}
 	passwordHash := persistence.PasswordHash{
 		Algorithm: defs.ScryptBcrypt,
@@ -42,13 +36,22 @@ func (s *SetupHandler) SetPassword(oldPassword string, password string) error {
 	passwordHash.Hash, err = crypto.ScryptHash([]byte(password))
 	if err != nil {
 		log.Println(err)
-		return errors.New("could not create hash for password")
+		return "", errors.New("could not create hash for password")
 	}
 	err = persistence.Setup.StorePasswordHash(&passwordHash)
 	if err != nil {
 		log.Println(err)
-		return errors.New("could not store password hash")
+		return "", errors.New("could not store password hash")
 	}
 
-	return nil
+	return password, nil
+}
+
+func (s *SetupHandler) IsPasswordSetup() bool {
+	exists, err := persistence.Setup.PasswordExists()
+	if err != nil {
+		log.Println(err)
+		return true
+	}
+	return exists
 }

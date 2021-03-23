@@ -42,14 +42,14 @@ func (k *SetupDAO) StorePasswordHash(hash *PasswordHash) error {
 }
 
 func (k *SetupDAO) PasswordHash() (*PasswordHash, error) {
-	var passwordHash PasswordHash
+	var passwordHash *PasswordHash
 	err := setup.db.View(func(tx *bbolt.Tx) error {
 		return GetStruct(k.bucket(tx), setupPasswordHashKey, &passwordHash)
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "could not retrieve password hash")
 	}
-	return &passwordHash, nil
+	return passwordHash, nil
 }
 
 func (k *SetupDAO) PasswordExists() (bool, error) {
@@ -57,6 +57,7 @@ func (k *SetupDAO) PasswordExists() (bool, error) {
 	if err != nil {
 		// we return true here just in case the other end doesn't check the error
 		// as we don't want this to be overwritten
+		log.Println(err)
 		return true, errors.Wrap(err, "could not check if password exists")
 	}
 	return bundle != nil, nil
