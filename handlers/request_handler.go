@@ -88,6 +88,9 @@ func (h *Handler) Handle() {
 				log.Println("EOF")
 				break
 			}
+			if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
+				break
+			}
 			log.Println("websocket connection read error:", err)
 			break
 		}
@@ -97,9 +100,6 @@ func (h *Handler) Handle() {
 		if msgType != h.messageType {
 			log.Println("message type mismatch")
 			continue
-		}
-		if websocket.CloseStatus(err) == websocket.StatusNormalClosure {
-			break
 		}
 
 		request := Request{}
