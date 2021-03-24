@@ -80,7 +80,7 @@ func ScryptCompare(password []byte, hash []byte) (matches bool, err error) {
 		return
 	}
 	defer func() {
-		time.Sleep(time.Duration(rand.Intn(1_000))*time.Nanosecond + time.Duration(password[0])*time.Nanosecond)
+		time.Sleep(time.Duration(rand.Intn(10_000)) * time.Nanosecond)
 		if r := recover(); r != nil {
 			log.Println(r)
 			time.Sleep(time.Duration(rand.Intn(1_000_000)) * time.Nanosecond)

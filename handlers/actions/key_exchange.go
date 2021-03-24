@@ -9,23 +9,20 @@ import (
 )
 
 type KeyExchangeHandler struct {
+	setup SetupHandler
 }
 
 func (k *KeyExchangeHandler) PublishPreKeyBundle(
 	registrationId int, deviceId int, preKeyId int,
 	publicPreKey []byte, signedPreKeyId int,
 	publicSignedPreKey []byte, signedPreKeySignature []byte,
-	identityKey []byte,
+	identityKey []byte, password string,
 ) error {
-	log.Println("Received pre-key bundle")
-	keyExists, err := persistence.KeyExchange.PreKeyBundleExists()
-	if err != nil {
-		return errors.Wrap(err, "failed to check if the pre-key bundle already exists")
-	}
-	if keyExists {
-		return errors.New("pre-key bundle already exists, cannot overwrite it")
+	if !k.setup.IsPasswordValid(password) {
+		return errors.New("specified password can't be used")
 	}
 
+	log.Println("Received pre-key bundle")
 	preKeyBundle := defs.PreKeyBundle{
 		RegistrationID:        registrationId,
 		DeviceID:              deviceId,

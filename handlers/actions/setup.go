@@ -55,3 +55,27 @@ func (s *SetupHandler) IsPasswordSetup() bool {
 	}
 	return exists
 }
+
+func (s *SetupHandler) IsPasswordValid(password string) bool {
+	if !s.IsPasswordSetup() {
+		return false
+	}
+
+	hash, err := persistence.Setup.PasswordHash()
+	if err != nil {
+		log.Println(err)
+		return false
+	}
+
+	if hash.Algorithm != defs.ScryptBcrypt {
+		log.Println("uh oh")
+		return false
+	}
+
+	matches, err := crypto.ScryptCompare([]byte(password), hash.Hash)
+	if err != nil {
+		return false
+	}
+
+	return matches
+}
