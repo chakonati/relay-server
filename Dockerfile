@@ -1,6 +1,6 @@
 from archlinux as builder
 
-run pacman -Syu --noconfirm --needed go
+run pacman -Syu --noconfirm --needed go gcc
 
 copy . /build
 
