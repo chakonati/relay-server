@@ -1,6 +1,8 @@
 package persistence
 
 import (
+	"encoding/binary"
+
 	"github.com/pkg/errors"
 	"github.com/vmihailenco/msgpack/v5"
 	"go.etcd.io/bbolt"
@@ -28,12 +30,22 @@ func GetStruct(b *bbolt.Bucket, key []byte, out interface{}) error {
 	return nil
 }
 
-func initBucket(bucketName string) error {
-	return setup.db.Update(func(tx *bbolt.Tx) error {
+func initBucket(db *DB, bucketName string) error {
+	return db.db.Update(func(tx *bbolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte(bucketName))
 		if err != nil {
 			return errors.Wrap(err, "could not create or get bucket "+bucketName)
 		}
 		return nil
 	})
+}
+
+func IntByteArray(i int) []byte {
+	byt := make([]byte, 4)
+	binary.BigEndian.PutUint32(byt, uint32(i))
+	return byt
+}
+
+func ByteArrayInt(byt []byte) int {
+	return int(binary.BigEndian.Uint32(byt))
 }

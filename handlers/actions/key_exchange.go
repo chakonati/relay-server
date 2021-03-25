@@ -19,15 +19,13 @@ func (k *KeyExchangeHandler) PublishPreKeyBundle(
 	identityKey []byte, password string,
 ) error {
 	if !k.setup.IsPasswordValid(password) {
-		return errors.New("specified password can't be used")
+		return InvalidPasswordError()
 	}
 
 	log.Println("Received pre-key bundle")
 	preKeyBundle := defs.PreKeyBundle{
 		RegistrationID:        registrationId,
 		DeviceID:              deviceId,
-		PreKeyID:              preKeyId,
-		PublicPreKey:          publicPreKey,
 		SignedPreKeyID:        signedPreKeyId,
 		PublicSignedPreKey:    publicSignedPreKey,
 		SignedPreKeySignature: signedPreKeySignature,
@@ -36,12 +34,18 @@ func (k *KeyExchangeHandler) PublishPreKeyBundle(
 	if err := persistence.KeyExchange.StorePreKeyBundle(preKeyBundle); err != nil {
 		return errors.Wrap(err, "failed to store key bundle")
 	}
+
+	if err := persistence.KeyExchange.AddOneTimePreKey(defs.OneTimePreKey{
+		PreKeyId: preKeyId,
+		PreKey:   publicPreKey,
+	}); err != nil {
+		return errors.Wrap(err, "could not store one time pre-key")
+	}
 	return nil
 }
 
 func (k *KeyExchangeHandler) PreKeyBundle() (
-	registrationId int, deviceId int, preKeyId int,
-	publicPreKey []byte, signedPreKeyId int,
+	registrationId int, deviceId int, preKeyId int, signedPreKeyId int,
 	publicSignedPreKey []byte, signedPreKeySignature []byte,
 	identityKey []byte, err error,
 ) {
@@ -62,11 +66,24 @@ func (k *KeyExchangeHandler) PreKeyBundle() (
 
 	registrationId = preKeyBundle.RegistrationID
 	deviceId = preKeyBundle.DeviceID
-	preKeyId = preKeyBundle.PreKeyID
-	publicPreKey = preKeyBundle.PublicPreKey
 	signedPreKeyId = preKeyBundle.SignedPreKeyID
 	publicSignedPreKey = preKeyBundle.PublicSignedPreKey
 	signedPreKeySignature = preKeyBundle.SignedPreKeySignature
 	identityKey = preKeyBundle.IdentityKey
 	return
+}
+
+func (k *KeyExchangeHandler) PublishOneTimePreKeys(preKeys []defs.OneTimePreKey, password string) error {
+	if !k.setup.IsPasswordValid(password) {
+		return InvalidPasswordError()
+	}
+
+	for index, preKey := range preKeys {
+		if err := persistence.KeyExchange.AddOneTimePreKey(preKey); err != nil {
+			return errors.Wrapf(err,
+				"could not add one time pre-key at index %d, id %d", index, preKey.PreKeyId)
+		}
+	}
+
+	return nil
 }

@@ -62,6 +62,9 @@ func initMessageDB() error {
 
 func initDAOs() error {
 	if err := Setup.init(); err != nil {
+		return errors.Wrap(err, "could not initialize setup persistence")
+	}
+	if err := KeyExchange.init(); err != nil {
 		return errors.Wrap(err, "could not initialize key exchange persistence")
 	}
 

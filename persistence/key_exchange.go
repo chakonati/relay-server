@@ -3,6 +3,7 @@ package persistence
 import (
 	"log"
 	"server/defs"
+	"sync"
 
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -11,6 +12,7 @@ import (
 type KeyExchangeDAO struct{}
 
 const keyExchangeBucketName = "key_exchange"
+const keyExchangeOTPKBucketName = "key_exchange_otpk"
 
 var (
 	keyExchangePreKeyBundleKey = []byte("pre_key_bundle")
@@ -19,11 +21,21 @@ var (
 var KeyExchange = KeyExchangeDAO{}
 
 func (k *KeyExchangeDAO) init() error {
-	return initBucket(keyExchangeBucketName)
+	if err := initBucket(&setup, keyExchangeBucketName); err != nil {
+		return err
+	}
+	if err := initBucket(&keys, keyExchangeOTPKBucketName); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (k *KeyExchangeDAO) bucket(tx *bbolt.Tx) *bbolt.Bucket {
 	return tx.Bucket([]byte(keyExchangeBucketName))
+}
+
+func (k *KeyExchangeDAO) otpkBucket(tx *bbolt.Tx) *bbolt.Bucket {
+	return tx.Bucket([]byte(keyExchangeOTPKBucketName))
 }
 
 func (k *KeyExchangeDAO) StorePreKeyBundle(bundle defs.PreKeyBundle) error {
@@ -55,4 +67,35 @@ func (k *KeyExchangeDAO) PreKeyBundleExists() (bool, error) {
 		return true, errors.Wrap(err, "could not check if pre-key bundle exists")
 	}
 	return bundle != nil, nil
+}
+
+var otpkMut sync.Mutex
+
+func (k *KeyExchangeDAO) AddOneTimePreKey(preKey defs.OneTimePreKey) error {
+	return keys.db.Update(func(tx *bbolt.Tx) error {
+		if err := k.otpkBucket(tx).Put(IntByteArray(preKey.PreKeyId), preKey.PreKey); err != nil {
+			return errors.Wrap(err, "could not add one time pre-key")
+		}
+		return nil
+	})
+}
+
+func (k *KeyExchangeDAO) NextOneTimePreKey() (*defs.OneTimePreKey, error) {
+	var preKey *defs.OneTimePreKey
+	otpkMut.Lock()
+	defer otpkMut.Unlock()
+	return preKey, keys.db.Update(func(tx *bbolt.Tx) error {
+		cursor := k.otpkBucket(tx).Cursor()
+		idByt, key := cursor.First()
+		if idByt != nil {
+			preKey = &defs.OneTimePreKey{
+				PreKeyId: ByteArrayInt(idByt),
+				PreKey:   key,
+			}
+			if err := cursor.Delete(); err != nil {
+				return errors.Wrap(err, "could not delete retrieved one time pre-key")
+			}
+		}
+		return nil
+	})
 }

@@ -24,7 +24,7 @@ type PasswordHash struct {
 }
 
 func (k *SetupDAO) init() error {
-	return initBucket(setupBucketName)
+	return initBucket(&setup, setupBucketName)
 }
 
 func (k *SetupDAO) bucket(tx *bbolt.Tx) *bbolt.Bucket {
