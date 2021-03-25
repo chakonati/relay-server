@@ -99,3 +99,12 @@ func (k *KeyExchangeDAO) NextOneTimePreKey() (*defs.OneTimePreKey, error) {
 		return nil
 	})
 }
+
+func (k *KeyExchangeDAO) DeleteAllOneTimePreKeys() error {
+	return keys.db.Update(func(tx *bbolt.Tx) error {
+		bucket := k.otpkBucket(tx)
+		return bucket.ForEach(func(k, v []byte) error {
+			return bucket.Delete(k)
+		})
+	})
+}

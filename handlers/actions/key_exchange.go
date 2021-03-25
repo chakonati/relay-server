@@ -35,6 +35,8 @@ func (k *KeyExchangeHandler) PublishPreKeyBundle(
 		return errors.Wrap(err, "failed to store key bundle")
 	}
 
+	persistence.KeyExchange.DeleteAllOneTimePreKeys()
+
 	if err := persistence.KeyExchange.AddOneTimePreKey(defs.OneTimePreKey{
 		PreKeyId: preKeyId,
 		PreKey:   publicPreKey,
