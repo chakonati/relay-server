@@ -20,15 +20,29 @@ import (
 
 const bufSize = 512
 
+type MessageType int
+
+const (
+	MessageTypeRequest MessageType = iota
+	MessageTypeResponse
+	MessageTypeOneway
+	MessageTypeStream
+)
+
 type Request struct {
 	Id     int64         `key:"id"`
 	Action string        `key:"action"`
 	Data   []interface{} `key:"data"`
 }
 
+type Message struct {
+	Id          int64         `key:"id"`
+	MessageType MessageType   `key:"messageType"`
+	Data        []interface{} `key:"data"`
+}
+
 type Response struct {
-	Id   int64         `key:"id"`
-	Data []interface{} `key:"data"`
+	Message
 }
 
 type Handler struct {
@@ -72,8 +86,11 @@ func (h *Handler) Handle() {
 	if request.Action == "hello" {
 		log.Println("hello received")
 		err := h.reply(&Response{
-			Id:   request.Id,
-			Data: []interface{}{"hi!"},
+			Message{
+				Id:          request.Id,
+				MessageType: MessageTypeResponse,
+				Data:        []interface{}{"hi!"},
+			},
 		})
 		if err != nil {
 			log.Println(err)
@@ -168,8 +185,11 @@ func (h *Handler) startReceiving(requestChan chan *Request) {
 
 			encoders.ConvertErrorsToString(&result)
 			err = h.reply(&Response{
-				Id:   request.Id,
-				Data: result,
+				Message{
+					Id:          request.Id,
+					MessageType: MessageTypeResponse,
+					Data:        result,
+				},
 			})
 			if err != nil {
 				log.Println(err)
