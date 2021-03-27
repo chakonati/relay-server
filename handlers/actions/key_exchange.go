@@ -23,6 +23,10 @@ func (k *KeyExchangeHandler) PublishPreKeyBundle(
 	}
 
 	log.Println("Received pre-key bundle")
+	if err := persistence.KeyExchange.DeleteAllOneTimePreKeys(); err != nil {
+		return errors.Wrap(err, "could not delete previous one time pre-keys")
+	}
+
 	preKeyBundle := defs.PreKeyBundle{
 		RegistrationID:        registrationId,
 		DeviceID:              deviceId,
@@ -35,8 +39,6 @@ func (k *KeyExchangeHandler) PublishPreKeyBundle(
 		return errors.Wrap(err, "failed to store key bundle")
 	}
 
-	persistence.KeyExchange.DeleteAllOneTimePreKeys()
-
 	if err := persistence.KeyExchange.AddOneTimePreKey(defs.OneTimePreKey{
 		PreKeyId: preKeyId,
 		PreKey:   publicPreKey,
@@ -47,8 +49,10 @@ func (k *KeyExchangeHandler) PublishPreKeyBundle(
 }
 
 func (k *KeyExchangeHandler) PreKeyBundle() (
-	registrationId int, deviceId int, preKeyId int, signedPreKeyId int,
-	publicSignedPreKey []byte, signedPreKeySignature []byte,
+	registrationId int, deviceId int,
+	preKeyId *int, preKey *[]byte,
+	signedPreKeyId int, publicSignedPreKey []byte,
+	signedPreKeySignature []byte,
 	identityKey []byte, err error,
 ) {
 	keyExists, err := persistence.KeyExchange.PreKeyBundleExists()
@@ -64,15 +68,31 @@ func (k *KeyExchangeHandler) PreKeyBundle() (
 	preKeyBundle, err := persistence.KeyExchange.PreKeyBundle()
 	if err != nil {
 		err = errors.Wrap(err, "failed to retrieve pre-key bundle")
+		return
+	}
+
+	oneTimePreKey, err := k.OneTimePreKey()
+	if err != nil {
+		err = errors.Wrap(err, "failed to retrieve one time pre-key")
+		return
 	}
 
 	registrationId = preKeyBundle.RegistrationID
 	deviceId = preKeyBundle.DeviceID
+	if oneTimePreKey != nil {
+		preKeyId = &oneTimePreKey.PreKeyId
+		preKey = &oneTimePreKey.PreKey
+	}
 	signedPreKeyId = preKeyBundle.SignedPreKeyID
 	publicSignedPreKey = preKeyBundle.PublicSignedPreKey
 	signedPreKeySignature = preKeyBundle.SignedPreKeySignature
 	identityKey = preKeyBundle.IdentityKey
 	return
+}
+
+func (k *KeyExchangeHandler) PreKeyBundleExists() bool {
+	keyExists, err := persistence.KeyExchange.PreKeyBundleExists()
+	return err == nil && keyExists
 }
 
 func (k *KeyExchangeHandler) PublishOneTimePreKeys(preKeys []defs.OneTimePreKey, password string) error {
@@ -88,4 +108,29 @@ func (k *KeyExchangeHandler) PublishOneTimePreKeys(preKeys []defs.OneTimePreKey,
 	}
 
 	return nil
+}
+
+func (k *KeyExchangeHandler) OneTimePreKey() (*defs.OneTimePreKey, error) {
+	preKey, err := persistence.KeyExchange.NextOneTimePreKey()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not get a pre key")
+	}
+	return preKey, nil
+}
+
+func (k *KeyExchangeHandler) DeviceId() (int, error) {
+	keyExists, err := persistence.KeyExchange.PreKeyBundleExists()
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to check if the pre-key bundle already exists")
+	}
+	if !keyExists {
+		return 0, errors.New("pre-key bundle does not exist")
+	}
+
+	preKeyBundle, err := persistence.KeyExchange.PreKeyBundle()
+	if err != nil {
+		err = errors.Wrap(err, "failed to retrieve pre-key bundle")
+	}
+
+	return preKeyBundle.DeviceID, nil
 }
