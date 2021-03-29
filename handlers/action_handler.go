@@ -20,10 +20,6 @@ type ActionHandler struct {
 
 	KeyExchange actions.KeyExchangeHandler
 	Setup       actions.SetupHandler
-
-	// Subscriptions
-
-	MessagesSubscription subscriptions.MessageSubscription
 }
 
 func (a *ActionHandler) Echo(echo string) string {
@@ -36,6 +32,8 @@ func (a *ActionHandler) Subscribe(subName string) error {
 	if err != nil {
 		return errors.Wrapf(err, "could not find subscription with name %s", subName)
 	}
+
+	subscription.Subscribe(a.handler)
 
 	return nil
 }

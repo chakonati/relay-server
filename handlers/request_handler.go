@@ -8,6 +8,7 @@ import (
 	"server/decoders"
 	"server/encoders"
 	"server/session"
+	"server/subscriptions"
 	"sync"
 	"time"
 
@@ -196,4 +197,8 @@ func (h *Handler) startReceiving(requestChan chan *Request) {
 			}
 		}()
 	}
+}
+
+func (h *Handler) Disconnected() {
+	subscriptions.Subscriptions.MessagesSubscription.Unsubscribe(h)
 }
