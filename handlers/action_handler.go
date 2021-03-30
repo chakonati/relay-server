@@ -20,6 +20,7 @@ type ActionHandler struct {
 
 	KeyExchange actions.KeyExchangeHandler
 	Setup       actions.SetupHandler
+	Messaging   actions.MessageHandler
 }
 
 func (a *ActionHandler) Echo(echo string) string {
