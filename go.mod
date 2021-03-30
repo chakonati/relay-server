@@ -9,8 +9,8 @@ require (
 	github.com/vmihailenco/msgpack/v5 v5.3.1
 	gitlab.com/xdevs23/go-reflectutil v1.6.0
 	go.etcd.io/bbolt v1.3.5
-	go.step.sm/crypto v0.8.0
+	go.step.sm/crypto v0.8.1
 	golang.org/x/crypto v0.0.0-20210322153248-0c34fe9e7dc2
-	golang.org/x/sys v0.0.0-20210326220804-49726bf1d181 // indirect
+	golang.org/x/sys v0.0.0-20210330210617-4fbd30eecc44 // indirect
 	nhooyr.io/websocket v1.8.6
 )
