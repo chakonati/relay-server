@@ -29,7 +29,11 @@ func (a *ActionHandler) Echo(echo string) string {
 
 func (a *ActionHandler) Subscribe(subName string) error {
 	var subscription subscriptions.Subscription
-	err := reflectutil.ExtractByName(a, strcase.UpperCamelCase(subName)+subscriptionSuffix, &subscription)
+	err := reflectutil.ExtractByName(
+		subscriptions.Subscriptions,
+		strcase.UpperCamelCase(subName)+subscriptionSuffix,
+		&subscription,
+	)
 	if err != nil {
 		return errors.Wrapf(err, "could not find subscription with name %s", subName)
 	}
