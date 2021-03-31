@@ -29,13 +29,13 @@ const (
 	scryptMinimumCPUAndMem = 16384
 )
 
-type scryptParameters struct {
+type scryptHash struct {
 	CPUAndMemCost      int
 	InnerCPUAndMemCost int
 	Parallelization    int
-	SaltLen            int
-	HashLen            int
 	KeyLen             int
+	Salt               []byte
+	BcryptHash         []byte
 }
 
 func ScryptHash(byt []byte) ([]byte, error) {
@@ -43,35 +43,32 @@ func ScryptHash(byt []byte) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not generate salt")
 	}
-	params := scryptParameters{
+	scryptHash := scryptHash{
 		CPUAndMemCost:      scryptDefaultCPUAndMemCost,
 		InnerCPUAndMemCost: scryptDefaultInnerCPUAndMemCost,
 		Parallelization:    scryptParallelization,
 		KeyLen:             scryptDefaultKeyLen,
 	}
 	key, err := scrypt.Key(byt, salt,
-		params.CPUAndMemCost,
-		params.InnerCPUAndMemCost,
-		params.Parallelization,
-		params.KeyLen)
+		scryptHash.CPUAndMemCost,
+		scryptHash.InnerCPUAndMemCost,
+		scryptHash.Parallelization,
+		scryptHash.KeyLen)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not derive key")
 	}
-	hash, err := bcrypt.GenerateFromPassword(key, bcrypt.DefaultCost)
+	scryptHash.BcryptHash, err = bcrypt.GenerateFromPassword(key, bcrypt.DefaultCost)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not hash derived key")
 	}
+	scryptHash.Salt = salt
 
-	params.SaltLen = len(salt)
-	params.HashLen = len(hash)
-	packedParams, err := encoders.Msgpack{}.Pack(&params)
+	packed, err := encoders.Msgpack{}.Pack(&scryptHash)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not pack params")
 	}
 
-	combined := make([]byte, 0, 1+len(packedParams)+len(hash)+len(hash))
-	combined = append(append(append(append(combined, byte(len(packedParams))), packedParams...), hash...), salt...)
-	return combined, err
+	return packed, err
 }
 
 func ScryptCompare(password []byte, hash []byte) (matches bool, err error) {
@@ -88,21 +85,15 @@ func ScryptCompare(password []byte, hash []byte) (matches bool, err error) {
 			err = errors.New("comparing scrypt hash failed miserably")
 		}
 	}()
-	packedParamsLen := int(hash[0])
-	if packedParamsLen == 0 {
-		err = fmt.Errorf("packed params too short")
-		return
-	}
-	packedParams := hash[1 : packedParamsLen+1]
-	var params scryptParameters
-	err = decoders.Msgpack{}.Unmarshal(packedParams, &params)
+	var scryptHash scryptHash
+	err = decoders.Msgpack{}.Unmarshal(hash, &scryptHash)
 	if err != nil {
-		err = errors.Wrap(err, "could not unpack packed params")
+		err = errors.Wrap(err, "could not unmarshal scrypt hash")
 		return
 	}
 
-	saltLen := params.SaltLen
-	bcryptLen := params.HashLen
+	saltLen := len(scryptHash.Salt)
+	bcryptLen := len(scryptHash.BcryptHash)
 	if saltLen < scryptMinimumSaltLen {
 		err = fmt.Errorf("salt len of hash is smaller than minimum of %d", scryptMinimumSaltLen)
 		return
@@ -112,16 +103,17 @@ func ScryptCompare(password []byte, hash []byte) (matches bool, err error) {
 		return
 	}
 
-	bcryptHash := hash[1+packedParamsLen : bcryptLen+packedParamsLen+1]
-	salt := hash[1+packedParamsLen+bcryptLen:]
-
-	key, err := scrypt.Key(password, salt,
-		params.CPUAndMemCost, params.InnerCPUAndMemCost, params.Parallelization, params.KeyLen)
+	key, err := scrypt.Key(password, scryptHash.Salt,
+		scryptHash.CPUAndMemCost,
+		scryptHash.InnerCPUAndMemCost,
+		scryptHash.Parallelization,
+		scryptHash.KeyLen,
+	)
 	if err != nil {
 		err = errors.Wrap(err, "could not derive key")
 	}
 
-	resultErr := bcrypt.CompareHashAndPassword(bcryptHash, key)
+	resultErr := bcrypt.CompareHashAndPassword(scryptHash.BcryptHash, key)
 	matches = resultErr == nil
 	return
 }
