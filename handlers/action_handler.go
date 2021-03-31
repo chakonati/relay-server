@@ -30,7 +30,7 @@ func (a *ActionHandler) Echo(echo string) string {
 func (a *ActionHandler) Subscribe(subName string) error {
 	var subscription subscriptions.Subscription
 	err := reflectutil.ExtractByName(
-		subscriptions.Subscriptions,
+		&subscriptions.Subscriptions,
 		strcase.UpperCamelCase(subName)+subscriptionSuffix,
 		&subscription,
 	)

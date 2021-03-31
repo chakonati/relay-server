@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"server/handlers"
+	"server/messaging"
 	"server/persistence"
 	"server/session"
 	"strconv"
@@ -64,10 +65,17 @@ func startHTTP() {
 	log.Fatal(http.ListenAndServe(listenOn, nil))
 }
 
+var relay = messaging.Relay{}
+
+func startWorkers() {
+	go relay.StartWorking()
+}
+
 func main() {
 	useEnv()
 	if err := persistence.InitDatabases(); err != nil {
 		log.Fatal("Failed to initialize databases:", err)
 	}
+	startWorkers()
 	startHTTP()
 }

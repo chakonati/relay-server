@@ -73,7 +73,7 @@ var otpkMut sync.Mutex
 
 func (k *KeyExchangeDAO) AddOneTimePreKey(preKey defs.OneTimePreKey) error {
 	return keys.db.Update(func(tx *bbolt.Tx) error {
-		if err := k.otpkBucket(tx).Put(IntByteArray(preKey.PreKeyId), preKey.PreKey); err != nil {
+		if err := k.otpkBucket(tx).Put(IntBytes(preKey.PreKeyId), preKey.PreKey); err != nil {
 			return errors.Wrap(err, "could not add one time pre-key")
 		}
 		return nil
@@ -89,7 +89,7 @@ func (k *KeyExchangeDAO) NextOneTimePreKey() (*defs.OneTimePreKey, error) {
 		idByt, key := cursor.First()
 		if idByt != nil {
 			preKey = &defs.OneTimePreKey{
-				PreKeyId: ByteArrayInt(idByt),
+				PreKeyId: BytesInt(idByt),
 				PreKey:   key,
 			}
 			if err := cursor.Delete(); err != nil {

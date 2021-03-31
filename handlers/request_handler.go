@@ -10,6 +10,7 @@ import (
 	"server/session"
 	"server/subscriptions"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -56,6 +57,8 @@ type Handler struct {
 }
 
 var runningRequests sync.WaitGroup
+
+var nextMessageId int64 = 0
 
 func (h *Handler) Handle() {
 	h.context = context.Background()
@@ -145,8 +148,8 @@ func (h *Handler) Handle() {
 	log.Println("Closed connection")
 }
 
-func (h *Handler) reply(response *Response) error {
-	bytes, err := h.encoder.Marshal(response)
+func (h *Handler) send(i interface{}) error {
+	bytes, err := h.encoder.Marshal(i)
 	if err != nil {
 		return err
 	}
@@ -157,6 +160,15 @@ func (h *Handler) reply(response *Response) error {
 	}
 
 	return nil
+}
+
+func (h *Handler) sendMessage(message *Message) error {
+	message.Id = atomic.AddInt64(&nextMessageId, 1)
+	return h.send(message)
+}
+
+func (h *Handler) reply(response *Response) error {
+	return h.send(response)
 }
 
 func (h *Handler) startReceiving(requestChan chan *Request) {

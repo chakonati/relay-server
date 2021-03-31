@@ -1,12 +1,20 @@
 package handlers
 
-import "server/subscriptions"
+import (
+	"log"
+	"server/subscriptions"
+)
 
 func (h *Handler) NotifyMessageNotification(
-	sub subscriptions.MessageSubscription,
+	sub *subscriptions.MessageSubscription,
 	notification *subscriptions.MessageNotification,
 ) {
-	panic("implement me")
+	if err := h.sendMessage(&Message{
+		MessageType: MessageTypeOneway,
+		Data:        []interface{}{*notification},
+	}); err != nil {
+		log.Println("Note: could not notify of message:", err)
+	}
 }
 
 var _ subscriptions.MessageSubscriber = (*Handler)(nil)

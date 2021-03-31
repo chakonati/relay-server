@@ -40,12 +40,22 @@ func initBucket(db *DB, bucketName string) error {
 	})
 }
 
-func IntByteArray(i int) []byte {
+func IntBytes(i int) []byte {
 	byt := make([]byte, 4)
 	binary.BigEndian.PutUint32(byt, uint32(i))
 	return byt
 }
 
-func ByteArrayInt(byt []byte) int {
+func BytesInt(byt []byte) int {
 	return int(binary.BigEndian.Uint32(byt))
+}
+
+func UInt64Bytes(i uint64) []byte {
+	byt := make([]byte, 8)
+	binary.BigEndian.PutUint64(byt, i)
+	return byt
+}
+
+func BytesUInt64(byt []byte) uint64 {
+	return binary.BigEndian.Uint64(byt)
 }

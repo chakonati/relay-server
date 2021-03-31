@@ -67,6 +67,9 @@ func initDAOs() error {
 	if err := KeyExchange.init(); err != nil {
 		return errors.Wrap(err, "could not initialize key exchange persistence")
 	}
+	if err := Messages.init(); err != nil {
+		return errors.Wrap(err, "could not initialize message persistence")
+	}
 
 	return nil
 }
