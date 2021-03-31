@@ -27,7 +27,7 @@ func (m *MessageHandler) GetMessage(id uint64, password string) (*defs.Message, 
 	return persistence.Messages.Message(id)
 }
 
-func (m *MessageHandler) NextMessageID(password string) (uint64, bool, error) {
+func (m *MessageHandler) NextMessageId(password string) (uint64, bool, error) {
 	if !m.setup.IsPasswordValid(password) {
 		return 0, false, InvalidPasswordError()
 	}
