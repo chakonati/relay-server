@@ -16,19 +16,29 @@ type SetupHandler struct{}
 const setupPasswordLenMin = 14
 const setupPasswordLenMax = 20
 
-func (s *SetupHandler) SetPassword() (string, error) {
+type SetupSetPasswordResponse struct {
+	Password string
+	Error    error
+}
+
+func (s *SetupHandler) SetPassword() (response *SetupSetPasswordResponse) {
+	response = &SetupSetPasswordResponse{}
+
 	passwordExists, err := persistence.Setup.PasswordExists()
 	if err != nil {
 		log.Println(err)
-		return "", errors.New("could not check if password exists")
+		response.Error = errors.New("could not check if password exists")
+		return
 	}
 	if passwordExists {
-		return "", errors.New("password has already been set")
+		response.Error = errors.New("password has already been set")
+		return
 	}
 
 	password, err := randutil.Alphanumeric(setupPasswordLenMin + rand.Intn(setupPasswordLenMax-setupPasswordLenMin))
 	if err != nil {
-		return "", errors.New("could not generate new password")
+		response.Error = errors.New("could not generate new password")
+		return
 	}
 	passwordHash := persistence.PasswordHash{
 		Algorithm: defs.ScryptBcrypt,
@@ -36,46 +46,53 @@ func (s *SetupHandler) SetPassword() (string, error) {
 	passwordHash.Hash, err = crypto.ScryptHash([]byte(password))
 	if err != nil {
 		log.Println(err)
-		return "", errors.New("could not create hash for password")
+		response.Error = errors.New("could not create hash for password")
+		return
 	}
 	err = persistence.Setup.StorePasswordHash(&passwordHash)
 	if err != nil {
 		log.Println(err)
-		return "", errors.New("could not store password hash")
+		response.Error = errors.New("could not store password hash")
+		return
 	}
 
-	return password, nil
+	response.Password = password
+	return
 }
 
-func (s *SetupHandler) IsPasswordSetup() bool {
+type MessagingIsPasswordSetupResponse struct{ IsSetUp bool }
+
+func (s *SetupHandler) IsPasswordSetup() *MessagingIsPasswordSetupResponse {
 	exists, err := persistence.Setup.PasswordExists()
 	if err != nil {
 		log.Println(err)
-		return true
+		return &MessagingIsPasswordSetupResponse{false}
 	}
-	return exists
+	return &MessagingIsPasswordSetupResponse{exists}
 }
 
-func (s *SetupHandler) IsPasswordValid(password string) bool {
-	if !s.IsPasswordSetup() {
-		return false
+type MessagingIsPasswordValidResponse struct{ Valid bool }
+
+func (s *SetupHandler) IsPasswordValid(password string) *MessagingIsPasswordValidResponse {
+	if !s.IsPasswordSetup().IsSetUp {
+		return &MessagingIsPasswordValidResponse{false}
 	}
 
 	hash, err := persistence.Setup.PasswordHash()
 	if err != nil {
 		log.Println(err)
-		return false
+		return &MessagingIsPasswordValidResponse{false}
 	}
 
 	if hash.Algorithm != defs.ScryptBcrypt {
 		log.Println("uh oh")
-		return false
+		return &MessagingIsPasswordValidResponse{false}
 	}
 
 	matches, err := crypto.ScryptCompare([]byte(password), hash.Hash)
 	if err != nil {
-		return false
+		return &MessagingIsPasswordValidResponse{false}
 	}
 
-	return matches
+	return &MessagingIsPasswordValidResponse{matches}
 }

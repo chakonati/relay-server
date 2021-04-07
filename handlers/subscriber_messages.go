@@ -9,9 +9,9 @@ func (h *Handler) NotifyMessageNotification(
 	sub *subscriptions.MessageSubscription,
 	notification *subscriptions.MessageNotification,
 ) {
-	if err := h.sendMessage(&Message{
+	if err := h.sendMessage(&Notification{
 		MessageType: MessageTypeOneway,
-		Data:        []interface{}{*notification},
+		Data:        notification,
 	}); err != nil {
 		log.Println("Note: could not notify of message:", err)
 	}

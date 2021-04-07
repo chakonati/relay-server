@@ -6,6 +6,7 @@ require (
 	github.com/klauspost/compress v1.11.13 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/stoewer/go-strcase v1.2.0
+	github.com/toowoxx/go-structs v1.2.0
 	github.com/vmihailenco/msgpack/v5 v5.3.1
 	gitlab.com/xdevs23/go-reflectutil v1.6.0
 	go.etcd.io/bbolt v1.3.5

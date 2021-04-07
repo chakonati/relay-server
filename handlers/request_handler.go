@@ -13,6 +13,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/stoewer/go-strcase"
+
+	"github.com/toowoxx/go-structs"
+
 	"github.com/pkg/errors"
 
 	"gitlab.com/xdevs23/go-reflectutil/reflectutil"
@@ -31,21 +35,35 @@ const (
 	MessageTypeStream
 )
 
-type Request struct {
-	Id     int64         `key:"id"`
-	Action string        `key:"action"`
-	Data   []interface{} `key:"data"`
+type Message interface {
+	ID() int64
+	SetID(id int64)
 }
 
-type Message struct {
+type Request struct {
 	Id          int64         `key:"id"`
 	MessageType MessageType   `key:"messageType"`
-	Data        []interface{} `key:"data"`
+	Action      string        `key:"action"`
+	Parameters  []interface{} `key:"parameters"`
 }
 
-type Response struct {
-	Message
+func (r Request) ID() int64 {
+	return r.Id
 }
+
+func (r Request) SetID(id int64) {
+	r.Id = id
+}
+
+type MessageHeader struct {
+	Id          int64       `key:"id"`
+	MessageType MessageType `key:"messageType"`
+}
+
+var (
+	_ Message = (*Request)(nil)
+	_ Message = (*Notification)(nil)
+)
 
 type Handler struct {
 	Session        session.Session
@@ -54,6 +72,20 @@ type Handler struct {
 	encoder        encoders.Encoder
 	messageType    websocket.MessageType
 	requestChannel chan *Request
+}
+
+type Notification struct {
+	Id          int64       `key:"id"`
+	MessageType MessageType `key:"messageType"`
+	Data        interface{} `key:"data"`
+}
+
+func (n Notification) ID() int64 {
+	return n.Id
+}
+
+func (n Notification) SetID(id int64) {
+	n.Id = id
 }
 
 var runningRequests sync.WaitGroup
@@ -89,13 +121,7 @@ func (h *Handler) Handle() {
 
 	if request.Action == "hello" {
 		log.Println("hello received")
-		err := h.reply(&Response{
-			Message{
-				Id:          request.Id,
-				MessageType: MessageTypeResponse,
-				Data:        []interface{}{"hi!"},
-			},
-		})
+		err := h.replyStruct(&request, struct{ Reply string }{"hi!"})
 		if err != nil {
 			log.Println(err)
 		}
@@ -162,13 +188,51 @@ func (h *Handler) send(i interface{}) error {
 	return nil
 }
 
-func (h *Handler) sendMessage(message *Message) error {
-	message.Id = atomic.AddInt64(&nextMessageId, 1)
+func (h *Handler) sendMessage(message Message) error {
+	message.SetID(atomic.AddInt64(&nextMessageId, 1))
 	return h.send(message)
 }
 
-func (h *Handler) reply(response *Response) error {
+func (h *Handler) reply(response map[string]interface{}) error {
 	return h.send(response)
+}
+
+func (h *Handler) replyStruct(request *Request, obj interface{}) error {
+	return h.sendStruct(request.Id, MessageTypeResponse, obj)
+}
+
+func normalizeMap(responseMap *map[string]interface{}) {
+	for name, value := range *responseMap {
+		delete(*responseMap, name)
+		newName := strcase.LowerCamelCase(name)
+		(*responseMap)[newName] = value
+		switch value.(type) {
+		case map[string]interface{}:
+			m := value.(map[string]interface{})
+			normalizeMap(&m)
+		case error:
+			(*responseMap)[newName] = value.(error).Error()
+		}
+	}
+}
+
+func (h *Handler) sendStruct(requestId int64, messageType MessageType, obj interface{}) error {
+	header := &MessageHeader{
+		Id:          requestId,
+		MessageType: messageType,
+	}
+	var responseMap map[string]interface{}
+	if obj != nil {
+		responsePayload := obj
+		responseMap = structs.Map(responsePayload)
+		structs.FillMap(header, responseMap)
+	} else {
+		responseMap = structs.Map(header)
+	}
+
+	normalizeMap(&responseMap)
+
+	return h.reply(responseMap)
 }
 
 func (h *Handler) startReceiving(requestChan chan *Request) {
@@ -186,24 +250,20 @@ func (h *Handler) startReceiving(requestChan chan *Request) {
 
 		go func() {
 			defer runningRequests.Done()
-			result, err := reflectutil.CallPathAutoConvert(actionHandler, request.Action, request.Data...)
+			result, err := reflectutil.CallPathAutoConvert(actionHandler, request.Action, request.Parameters...)
 			if err != nil {
 				log.Println(err)
 				return
 			}
-			lastResult := result[len(result)-1]
-			if resultErr, isErr := lastResult.(error); isErr {
-				log.Printf("Error during call to %s: %v", request.Action, resultErr)
+			if len(result) > 1 {
+				log.Println("More than one result:", len(result))
 			}
+			var obj interface{} = nil
+			if len(result) == 1 {
+				obj = result[0]
+			}
+			err = h.replyStruct(request, obj)
 
-			encoders.ConvertErrorsToString(&result)
-			err = h.reply(&Response{
-				Message{
-					Id:          request.Id,
-					MessageType: MessageTypeResponse,
-					Data:        result,
-				},
-			})
 			if err != nil {
 				log.Println(err)
 			}

@@ -12,13 +12,31 @@ type KeyExchangeHandler struct {
 	setup SetupHandler
 }
 
+type KeyExchangePublishPreKeyBundleResponse struct {
+	Error error
+}
+
 func (k *KeyExchangeHandler) PublishPreKeyBundle(
 	registrationId int, deviceId int, preKeyId int,
 	publicPreKey []byte, signedPreKeyId int,
 	publicSignedPreKey []byte, signedPreKeySignature []byte,
 	identityKey []byte, password string,
+) *KeyExchangePublishPreKeyBundleResponse {
+	return &KeyExchangePublishPreKeyBundleResponse{Error: k.publishPreKeyBundle(
+		registrationId, deviceId, preKeyId,
+		publicPreKey, signedPreKeyId,
+		publicSignedPreKey, signedPreKeySignature,
+		identityKey, password,
+	)}
+}
+
+func (k *KeyExchangeHandler) publishPreKeyBundle(
+	registrationId int, deviceId int, preKeyId int,
+	publicPreKey []byte, signedPreKeyId int,
+	publicSignedPreKey []byte, signedPreKeySignature []byte,
+	identityKey []byte, password string,
 ) error {
-	if !k.setup.IsPasswordValid(password) {
+	if !k.setup.IsPasswordValid(password).Valid {
 		return InvalidPasswordError()
 	}
 
@@ -48,16 +66,25 @@ func (k *KeyExchangeHandler) PublishPreKeyBundle(
 	return nil
 }
 
-func (k *KeyExchangeHandler) PreKeyBundle() (
-	registrationId int, deviceId int,
-	preKeyId *int, preKey *[]byte,
-	signedPreKeyId int, publicSignedPreKey []byte,
-	signedPreKeySignature []byte,
-	identityKey []byte, err error,
-) {
+type KeyExchangePreKeyBundleResponse struct {
+	RegistrationId        int
+	DeviceId              int
+	PreKeyId              *int
+	PreKey                *[]byte
+	SignedPreKeyId        int
+	PublicSignedPreKey    []byte
+	SignedPreKeySignature []byte
+	IdentityKey           []byte
+	Password              string
+	Error                 error
+}
+
+func (k *KeyExchangeHandler) PreKeyBundle() (response *KeyExchangePreKeyBundleResponse) {
+	response = &KeyExchangePreKeyBundleResponse{}
+
 	keyExists, err := persistence.KeyExchange.PreKeyBundleExists()
 	if err != nil {
-		err = errors.Wrap(err, "failed to check if the pre-key bundle already exists")
+		response.Error = errors.Wrap(err, "failed to check if the pre-key bundle already exists")
 		return
 	}
 	if !keyExists {
@@ -67,64 +94,82 @@ func (k *KeyExchangeHandler) PreKeyBundle() (
 
 	preKeyBundle, err := persistence.KeyExchange.PreKeyBundle()
 	if err != nil {
-		err = errors.Wrap(err, "failed to retrieve pre-key bundle")
+		response.Error = errors.Wrap(err, "failed to retrieve pre-key bundle")
 		return
 	}
 
-	oneTimePreKey, err := k.OneTimePreKey()
-	if err != nil {
-		err = errors.Wrap(err, "failed to retrieve one time pre-key")
+	oneTimePreKeyResponse := k.OneTimePreKey()
+	if oneTimePreKeyResponse.Error != nil {
+		response.Error = errors.Wrap(oneTimePreKeyResponse.Error, "failed to retrieve one time pre-key")
 		return
 	}
 
-	registrationId = preKeyBundle.RegistrationID
-	deviceId = preKeyBundle.DeviceID
-	if oneTimePreKey != nil {
-		preKeyId = &oneTimePreKey.PreKeyId
-		preKey = &oneTimePreKey.PreKey
+	response.RegistrationId = preKeyBundle.RegistrationID
+	response.DeviceId = preKeyBundle.DeviceID
+	if oneTimePreKeyResponse.OneTimePreKey != nil {
+		response.PreKeyId = &oneTimePreKeyResponse.OneTimePreKey.PreKeyId
+		response.PreKey = &oneTimePreKeyResponse.OneTimePreKey.PreKey
 	}
-	signedPreKeyId = preKeyBundle.SignedPreKeyID
-	publicSignedPreKey = preKeyBundle.PublicSignedPreKey
-	signedPreKeySignature = preKeyBundle.SignedPreKeySignature
-	identityKey = preKeyBundle.IdentityKey
+	response.SignedPreKeyId = preKeyBundle.SignedPreKeyID
+	response.PublicSignedPreKey = preKeyBundle.PublicSignedPreKey
+	response.SignedPreKeySignature = preKeyBundle.SignedPreKeySignature
+	response.IdentityKey = preKeyBundle.IdentityKey
 	return
 }
 
-func (k *KeyExchangeHandler) PreKeyBundleExists() bool {
+type KeyExchangePreKeyBundleExistsResponse struct{ Exists bool }
+
+func (k *KeyExchangeHandler) PreKeyBundleExists() *KeyExchangePreKeyBundleExistsResponse {
 	keyExists, err := persistence.KeyExchange.PreKeyBundleExists()
-	return err == nil && keyExists
+	return &KeyExchangePreKeyBundleExistsResponse{err == nil && keyExists}
 }
 
-func (k *KeyExchangeHandler) PublishOneTimePreKeys(preKeys []defs.OneTimePreKey, password string) error {
-	if !k.setup.IsPasswordValid(password) {
-		return InvalidPasswordError()
+type KeyExchangePublishOneTimePreKeysResponse struct{ Error error }
+
+func (k *KeyExchangeHandler) PublishOneTimePreKeys(
+	preKeys []defs.OneTimePreKey, password string,
+) *KeyExchangePublishOneTimePreKeysResponse {
+	if !k.setup.IsPasswordValid(password).Valid {
+		return &KeyExchangePublishOneTimePreKeysResponse{InvalidPasswordError()}
 	}
 
 	for index, preKey := range preKeys {
 		if err := persistence.KeyExchange.AddOneTimePreKey(preKey); err != nil {
-			return errors.Wrapf(err,
-				"could not add one time pre-key at index %d, id %d", index, preKey.PreKeyId)
+			return &KeyExchangePublishOneTimePreKeysResponse{errors.Wrapf(err,
+				"could not add one time pre-key at index %d, id %d", index, preKey.PreKeyId)}
 		}
 	}
 
-	return nil
+	return &KeyExchangePublishOneTimePreKeysResponse{}
 }
 
-func (k *KeyExchangeHandler) OneTimePreKey() (*defs.OneTimePreKey, error) {
+type KeyExchangeOneTimePreKeyResponse struct {
+	OneTimePreKey *defs.OneTimePreKey
+	Error         error
+}
+
+func (k *KeyExchangeHandler) OneTimePreKey() *KeyExchangeOneTimePreKeyResponse {
 	preKey, err := persistence.KeyExchange.NextOneTimePreKey()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get a pre key")
+		return &KeyExchangeOneTimePreKeyResponse{nil, errors.Wrap(err, "could not get a pre key")}
 	}
-	return preKey, nil
+	return &KeyExchangeOneTimePreKeyResponse{preKey, nil}
 }
 
-func (k *KeyExchangeHandler) DeviceId() (int, error) {
+type KeyExchangeDeviceIDResponse struct {
+	DeviceId int
+	Error    error
+}
+
+func (k *KeyExchangeHandler) DeviceId() (response *KeyExchangeDeviceIDResponse) {
+	response = &KeyExchangeDeviceIDResponse{}
+
 	keyExists, err := persistence.KeyExchange.PreKeyBundleExists()
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to check if the pre-key bundle already exists")
+		response.Error = errors.Wrap(err, "failed to check if the pre-key bundle already exists")
 	}
 	if !keyExists {
-		return 0, errors.New("pre-key bundle does not exist")
+		response.Error = errors.New("pre-key bundle does not exist")
 	}
 
 	preKeyBundle, err := persistence.KeyExchange.PreKeyBundle()
@@ -132,5 +177,6 @@ func (k *KeyExchangeHandler) DeviceId() (int, error) {
 		err = errors.Wrap(err, "failed to retrieve pre-key bundle")
 	}
 
-	return preKeyBundle.DeviceID, nil
+	response.DeviceId = preKeyBundle.DeviceID
+	return
 }
