@@ -16,17 +16,26 @@ type KeyExchangePublishPreKeyBundleResponse struct {
 	Error error
 }
 
+type KeyExchangePublishPreKeyBundleRequest struct {
+	RegistrationId        int
+	DeviceId              int
+	PreKeyId              int
+	PublicPreKey          []byte
+	SignedPreKeyId        int
+	PublicSignedPreKey    []byte
+	SignedPreKeySignature []byte
+	IdentityKey           []byte
+	Password              string
+}
+
 func (k *KeyExchangeHandler) PublishPreKeyBundle(
-	registrationId int, deviceId int, preKeyId int,
-	publicPreKey []byte, signedPreKeyId int,
-	publicSignedPreKey []byte, signedPreKeySignature []byte,
-	identityKey []byte, password string,
+	request KeyExchangePublishPreKeyBundleRequest,
 ) *KeyExchangePublishPreKeyBundleResponse {
 	return &KeyExchangePublishPreKeyBundleResponse{Error: k.publishPreKeyBundle(
-		registrationId, deviceId, preKeyId,
-		publicPreKey, signedPreKeyId,
-		publicSignedPreKey, signedPreKeySignature,
-		identityKey, password,
+		request.RegistrationId, request.DeviceId, request.PreKeyId,
+		request.PublicPreKey, request.SignedPreKeyId,
+		request.PublicSignedPreKey, request.SignedPreKeySignature,
+		request.IdentityKey, request.Password,
 	)}
 }
 
@@ -36,7 +45,7 @@ func (k *KeyExchangeHandler) publishPreKeyBundle(
 	publicSignedPreKey []byte, signedPreKeySignature []byte,
 	identityKey []byte, password string,
 ) error {
-	if !k.setup.IsPasswordValid(password).Valid {
+	if !k.setup.isPasswordValid(password).Valid {
 		return InvalidPasswordError()
 	}
 
@@ -126,10 +135,18 @@ func (k *KeyExchangeHandler) PreKeyBundleExists() *KeyExchangePreKeyBundleExists
 
 type KeyExchangePublishOneTimePreKeysResponse struct{ Error error }
 
+type KeyExchangePublishOneTimePreKeysRequest struct {
+	PreKeys  []defs.OneTimePreKey
+	Password string
+}
+
 func (k *KeyExchangeHandler) PublishOneTimePreKeys(
-	preKeys []defs.OneTimePreKey, password string,
+	request KeyExchangePublishOneTimePreKeysRequest,
 ) *KeyExchangePublishOneTimePreKeysResponse {
-	if !k.setup.IsPasswordValid(password).Valid {
+	password := request.Password
+	preKeys := request.PreKeys
+
+	if !k.setup.isPasswordValid(password).Valid {
 		return &KeyExchangePublishOneTimePreKeysResponse{InvalidPasswordError()}
 	}
 

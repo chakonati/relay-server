@@ -41,10 +41,10 @@ type Message interface {
 }
 
 type Request struct {
-	Id          int64         `key:"id"`
-	MessageType MessageType   `key:"messageType"`
-	Action      string        `key:"action"`
-	Parameters  []interface{} `key:"parameters"`
+	Id          int64       `key:"id"`
+	MessageType MessageType `key:"messageType"`
+	Action      string      `key:"action"`
+	Data        interface{} `key:"data"`
 }
 
 func (r Request) ID() int64 {
@@ -250,7 +250,11 @@ func (h *Handler) startReceiving(requestChan chan *Request) {
 
 		go func() {
 			defer runningRequests.Done()
-			result, err := reflectutil.CallPathAutoConvert(actionHandler, request.Action, request.Parameters...)
+			params := make([]interface{}, 0, 1)
+			if request.Data != nil {
+				params = append(params, request.Data)
+			}
+			result, err := reflectutil.CallPathAutoConvert(actionHandler, request.Action, params...)
 			if err != nil {
 				log.Println(err)
 				return

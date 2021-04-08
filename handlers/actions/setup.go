@@ -73,7 +73,15 @@ func (s *SetupHandler) IsPasswordSetup() *MessagingIsPasswordSetupResponse {
 
 type MessagingIsPasswordValidResponse struct{ Valid bool }
 
-func (s *SetupHandler) IsPasswordValid(password string) *MessagingIsPasswordValidResponse {
+type MessagingIsPasswordValidRequest struct {
+	Password string
+}
+
+func (s *SetupHandler) IsPasswordValid(request MessagingIsPasswordValidRequest) *MessagingIsPasswordValidResponse {
+	return s.isPasswordValid(request.Password)
+}
+
+func (s *SetupHandler) isPasswordValid(password string) *MessagingIsPasswordValidResponse {
 	if !s.IsPasswordSetup().IsSetUp {
 		return &MessagingIsPasswordValidResponse{false}
 	}

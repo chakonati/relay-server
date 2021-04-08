@@ -15,9 +15,13 @@ type MessageHandler struct {
 
 type MessagingSendMessageResponse struct{ Error error }
 
-func (m *MessageHandler) SendMessage(message []byte) *MessagingSendMessageResponse {
+type MessagingSendMessageRequest struct {
+	Message []byte
+}
+
+func (m *MessageHandler) SendMessage(request MessagingSendMessageRequest) *MessagingSendMessageResponse {
 	return &MessagingSendMessageResponse{messaging.MessageReceived(&defs.Message{
-		EncryptedMessage: message,
+		EncryptedMessage: request.Message,
 	})}
 }
 
@@ -26,12 +30,17 @@ type MessagingGetMessageResponse struct {
 	Error   error
 }
 
-func (m *MessageHandler) GetMessage(id uint64, password string) *MessagingGetMessageResponse {
-	if !m.setup.IsPasswordValid(password).Valid {
+type MessagingGetMessageRequest struct {
+	Id       uint64
+	Password string
+}
+
+func (m *MessageHandler) GetMessage(request MessagingGetMessageRequest) *MessagingGetMessageResponse {
+	if !m.setup.isPasswordValid(request.Password).Valid {
 		return &MessagingGetMessageResponse{nil, InvalidPasswordError()}
 	}
 
-	msg, err := persistence.Messages.Message(id)
+	msg, err := persistence.Messages.Message(request.Id)
 	return &MessagingGetMessageResponse{msg, err}
 }
 
@@ -41,8 +50,12 @@ type MessagingNextMessageIdResponse struct {
 	Error     error
 }
 
-func (m *MessageHandler) NextMessageId(password string) *MessagingNextMessageIdResponse {
-	if !m.setup.IsPasswordValid(password).Valid {
+type MessagingNextMessageIdRequest struct {
+	Password string
+}
+
+func (m *MessageHandler) NextMessageId(request MessagingNextMessageIdRequest) *MessagingNextMessageIdResponse {
+	if !m.setup.isPasswordValid(request.Password).Valid {
 		return &MessagingNextMessageIdResponse{0, false, InvalidPasswordError()}
 	}
 
@@ -52,24 +65,29 @@ func (m *MessageHandler) NextMessageId(password string) *MessagingNextMessageIdR
 
 type MessagingConfirmReceivedResponse struct{ Error error }
 
-func (m *MessageHandler) ConfirmReceived(id uint64, password string) (response *MessagingConfirmReceivedResponse) {
+type MessagingConfirmReceivedRequest struct {
+	Id       uint64
+	Password string
+}
+
+func (m *MessageHandler) ConfirmReceived(request MessagingConfirmReceivedRequest) (response *MessagingConfirmReceivedResponse) {
 	response = &MessagingConfirmReceivedResponse{}
 
-	if !m.setup.IsPasswordValid(password).Valid {
+	if !m.setup.isPasswordValid(request.Password).Valid {
 		response.Error = InvalidPasswordError()
 		return
 	}
 
-	msg, err := persistence.Messages.Message(id)
+	msg, err := persistence.Messages.Message(request.Id)
 	if err != nil {
-		response.Error = errors.Wrapf(err, "could not get message information for ID %d", id)
+		response.Error = errors.Wrapf(err, "could not get Message information for ID %d", request.Id)
 		return
 	}
 	if msg == nil {
-		response.Error = fmt.Errorf("message with ID %d does not exist", id)
+		response.Error = fmt.Errorf("Message with ID %d does not exist", request.Id)
 		return
 	}
 
-	response.Error = persistence.Messages.RemoveMessageByID(id)
+	response.Error = persistence.Messages.RemoveMessageByID(request.Id)
 	return
 }
