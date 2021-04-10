@@ -1,7 +1,6 @@
 package persistence
 
 import (
-	"log"
 	"server/defs"
 
 	"github.com/pkg/errors"
@@ -34,9 +33,8 @@ func (m *MessageDAO) AddMessage(message *defs.Message) error {
 			return errors.Wrap(err, "could not get next seq for message")
 		}
 		if err := PutStruct(b, UInt64Bytes(message.ID), message); err != nil {
-			return errors.Wrap(err, "could not store pre-key bundle")
+			return errors.Wrap(err, "could not add message")
 		}
-		log.Println("The pre-key bundle is now registered.")
 		return nil
 	})
 }
