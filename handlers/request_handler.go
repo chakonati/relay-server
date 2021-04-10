@@ -24,8 +24,6 @@ import (
 	"nhooyr.io/websocket"
 )
 
-const bufSize = 512
-
 type MessageType int
 
 const (
@@ -33,6 +31,7 @@ const (
 	MessageTypeResponse
 	MessageTypeOneway
 	MessageTypeStream
+	MessageTypeNotification
 )
 
 type Message interface {
@@ -75,9 +74,10 @@ type Handler struct {
 }
 
 type Notification struct {
-	Id          int64       `key:"id"`
-	MessageType MessageType `key:"messageType"`
-	Data        interface{} `key:"data"`
+	Id               int64       `key:"id"`
+	MessageType      MessageType `key:"messageType"`
+	SubscriptionName string      `key:"subscriptionName"`
+	Data             []byte      `key:"data"`
 }
 
 func (n Notification) ID() int64 {

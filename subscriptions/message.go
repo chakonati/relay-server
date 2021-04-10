@@ -10,7 +10,7 @@ type MessageSubscription struct {
 }
 
 type MessageNotification struct {
-	MessageID uint64
+	MessageID uint64 `key:"messageId"`
 }
 
 type MessageSubscriber interface {

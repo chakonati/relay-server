@@ -42,7 +42,7 @@ func (m *MessageDAO) AddMessage(message *defs.Message) error {
 func (m *MessageDAO) Message(ID uint64) (*defs.Message, error) {
 	var msg *defs.Message
 	err := messages.db.View(func(tx *bbolt.Tx) error {
-		return GetStruct(m.bucket(tx), UInt64Bytes(ID), msg)
+		return GetStruct(m.bucket(tx), UInt64Bytes(ID), &msg)
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not get message for ID %d", ID)

@@ -16,32 +16,43 @@ type MessageHandler struct {
 type MessagingSendMessageResponse struct{ Error error }
 
 type MessagingSendMessageRequest struct {
-	Message []byte
+	EncryptedMessage []byte
 }
 
 func (m *MessageHandler) SendMessage(request MessagingSendMessageRequest) *MessagingSendMessageResponse {
 	return &MessagingSendMessageResponse{messaging.MessageReceived(&defs.Message{
-		EncryptedMessage: request.Message,
+		EncryptedMessage: request.EncryptedMessage,
 	})}
 }
 
 type MessagingGetMessageResponse struct {
-	Message *defs.Message
-	Error   error
+	MessageId        uint64
+	EncryptedMessage []byte
+	Error            error
 }
 
 type MessagingGetMessageRequest struct {
-	Id       uint64
-	Password string
+	MessageId uint64
+	Password  string
 }
 
 func (m *MessageHandler) GetMessage(request MessagingGetMessageRequest) *MessagingGetMessageResponse {
 	if !m.setup.isPasswordValid(request.Password).Valid {
-		return &MessagingGetMessageResponse{nil, InvalidPasswordError()}
+		return &MessagingGetMessageResponse{Error: InvalidPasswordError()}
 	}
 
-	msg, err := persistence.Messages.Message(request.Id)
-	return &MessagingGetMessageResponse{msg, err}
+	msg, err := persistence.Messages.Message(request.MessageId)
+	if err != nil {
+		return &MessagingGetMessageResponse{Error: err}
+	}
+	if msg.EncryptedMessage == nil {
+		return &MessagingGetMessageResponse{Error: errors.New("encrypted message is nil, must not be nil")}
+	}
+
+	return &MessagingGetMessageResponse{
+		MessageId:        msg.ID,
+		EncryptedMessage: msg.EncryptedMessage,
+	}
 }
 
 type MessagingNextMessageIdResponse struct {
@@ -66,8 +77,8 @@ func (m *MessageHandler) NextMessageId(request MessagingNextMessageIdRequest) *M
 type MessagingConfirmReceivedResponse struct{ Error error }
 
 type MessagingConfirmReceivedRequest struct {
-	Id       uint64
-	Password string
+	MessageId uint64
+	Password  string
 }
 
 func (m *MessageHandler) ConfirmReceived(request MessagingConfirmReceivedRequest) (response *MessagingConfirmReceivedResponse) {
@@ -78,16 +89,16 @@ func (m *MessageHandler) ConfirmReceived(request MessagingConfirmReceivedRequest
 		return
 	}
 
-	msg, err := persistence.Messages.Message(request.Id)
+	msg, err := persistence.Messages.Message(request.MessageId)
 	if err != nil {
-		response.Error = errors.Wrapf(err, "could not get Message information for ID %d", request.Id)
+		response.Error = errors.Wrapf(err, "could not get Message information for ID %d", request.MessageId)
 		return
 	}
 	if msg == nil {
-		response.Error = fmt.Errorf("Message with ID %d does not exist", request.Id)
+		response.Error = fmt.Errorf("message with ID %d does not exist", request.MessageId)
 		return
 	}
 
-	response.Error = persistence.Messages.RemoveMessageByID(request.Id)
+	response.Error = persistence.Messages.RemoveMessageByID(request.MessageId)
 	return
 }

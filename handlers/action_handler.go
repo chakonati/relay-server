@@ -23,22 +23,26 @@ type ActionHandler struct {
 	Messaging   actions.MessageHandler
 }
 
-func (a *ActionHandler) Echo(echo string) string {
-	return echo
+type SubscribeRequest struct {
+	SubName string
 }
 
-func (a *ActionHandler) Subscribe(subName string) error {
+type SubscribeResponse struct {
+	Error error
+}
+
+func (a *ActionHandler) Subscribe(request SubscribeRequest) *SubscribeResponse {
 	var subscription subscriptions.Subscription
 	err := reflectutil.ExtractByName(
 		&subscriptions.Subscriptions,
-		strcase.UpperCamelCase(subName)+subscriptionSuffix,
+		strcase.UpperCamelCase(request.SubName)+subscriptionSuffix,
 		&subscription,
 	)
 	if err != nil {
-		return errors.Wrapf(err, "could not find subscription with name %s", subName)
+		return &SubscribeResponse{errors.Wrapf(err, "could not find subscription with name %s", request.SubName)}
 	}
 
 	subscription.Subscribe(a.handler)
 
-	return nil
+	return &SubscribeResponse{}
 }
