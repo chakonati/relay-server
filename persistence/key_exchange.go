@@ -69,6 +69,23 @@ func (k *KeyExchangeDAO) PreKeyBundleExists() (bool, error) {
 	return bundle != nil, nil
 }
 
+func (k *KeyExchangeDAO) DeviceID() (int, error) {
+	keyExists, err := k.PreKeyBundleExists()
+	if err != nil {
+		return -1, errors.Wrap(err, "failed to check if the pre-key bundle already exists")
+	}
+	if !keyExists {
+		return -1, errors.New("pre-key bundle does not exist")
+	}
+
+	preKeyBundle, err := k.PreKeyBundle()
+	if err != nil {
+		err = errors.Wrap(err, "failed to retrieve pre-key bundle")
+	}
+
+	return preKeyBundle.DeviceID, nil
+}
+
 var otpkMut sync.Mutex
 
 func (k *KeyExchangeDAO) AddOneTimePreKey(preKey defs.OneTimePreKey) error {

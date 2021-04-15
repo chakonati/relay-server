@@ -1,8 +1,13 @@
 package subscriptions
 
 import (
+	"log"
+	"server/configuration"
 	"server/defs"
+	"server/persistence"
 	"sync"
+
+	"gitlab.com/xdevs23/go-runtimeutil"
 )
 
 type MessageSubscription struct {
@@ -11,6 +16,8 @@ type MessageSubscription struct {
 
 type MessageNotification struct {
 	MessageID uint64 `key:"messageId"`
+	From      string `key:"from"`
+	DeviceID  int    `key:"deviceId"`
 }
 
 type MessageSubscriber interface {
@@ -33,11 +40,17 @@ func (s *MessageSubscription) Unsubscribe(subscriber Subscriber) {
 }
 
 func (s *MessageSubscription) NotifyMessage(msg *defs.Message) {
+	deviceId, err := persistence.KeyExchange.DeviceID()
+	if err != nil {
+		log.Printf("%s: error while getting device ID: %v", runtimeutil.ThisFuncName(), err)
+	}
 	for _, subscriber := range messageSubscribers {
 		s.wg.Add(1)
 		go func(sub MessageSubscriber) {
 			sub.NotifyMessageNotification(s, &MessageNotification{
 				MessageID: msg.ID,
+				From:      configuration.Config().Address,
+				DeviceID:  deviceId,
 			})
 			s.wg.Done()
 		}(subscriber)
