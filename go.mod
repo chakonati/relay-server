@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/klauspost/compress v1.11.13 // indirect
 	github.com/pkg/errors v0.9.1
+	github.com/sethvargo/go-envconfig v0.3.4 // indirect
 	github.com/stoewer/go-strcase v1.2.0
 	github.com/toowoxx/go-structs v1.2.0
 	github.com/vmihailenco/msgpack/v5 v5.3.1

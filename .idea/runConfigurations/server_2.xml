@@ -4,6 +4,7 @@
     <working_directory value="$PROJECT_DIR$/data/server2" />
     <envs>
       <env name="PORT" value="4562" />
+      <env name="ADDRESS" value="192.168.2.110:4562" />
     </envs>
     <kind value="PACKAGE" />
     <package value="server" />

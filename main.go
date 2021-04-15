@@ -3,20 +3,15 @@ package main
 import (
 	"fmt"
 	"log"
-	"net"
 	"net/http"
-	"os"
+	"server/configuration"
 	"server/handlers"
 	"server/messaging"
 	"server/persistence"
 	"server/session"
-	"strconv"
 
 	"nhooyr.io/websocket"
 )
-
-var listenPort = 4560
-var listenAddr = "0.0.0.0"
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Received connection")
@@ -40,27 +35,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}).Handle()
 }
 
-func useEnv() {
-	if listenPortEnv, exists := os.LookupEnv("PORT"); exists {
-		port, err := strconv.Atoi(listenPortEnv)
-		if err != nil {
-			log.Fatalf("Invalid port: %s", listenPortEnv)
-		}
-		listenPort = port
-	}
-	if listenAddrEnv, exists := os.LookupEnv("LISTEN_ADDR"); exists {
-		_, _, err := net.SplitHostPort(fmt.Sprintf("%s:1", listenAddrEnv))
-		if err != nil {
-			log.Fatalf("Invalid listen address: %s", listenAddrEnv)
-		}
-		listenAddr = listenAddrEnv
-	}
-}
-
 func startHTTP() {
 	http.HandleFunc("/", handler)
 
-	listenOn := fmt.Sprintf("%s:%d", listenAddr, listenPort)
+	listenOn := fmt.Sprintf("%s:%d", configuration.Config().ListenAddr, configuration.Config().ListenPort)
 	log.Println("Listening on", listenOn)
 	log.Fatal(http.ListenAndServe(listenOn, nil))
 }
@@ -72,9 +50,11 @@ func startWorkers() {
 }
 
 func main() {
-	useEnv()
+	if err := configuration.LoadConfigFromEnv(); err != nil {
+		log.Fatal("Failed to load configuration from environment: ", err)
+	}
 	if err := persistence.InitDatabases(); err != nil {
-		log.Fatal("Failed to initialize databases:", err)
+		log.Fatal("Failed to initialize databases: ", err)
 	}
 	startWorkers()
 	startHTTP()

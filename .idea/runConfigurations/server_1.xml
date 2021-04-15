@@ -2,6 +2,9 @@
   <configuration default="false" name="server 1" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="server" />
     <working_directory value="$PROJECT_DIR$/data/server1" />
+    <envs>
+      <env name="ADDRESS" value="192.168.2.110:4560" />
+    </envs>
     <kind value="PACKAGE" />
     <package value="server" />
     <directory value="$PROJECT_DIR$" />
