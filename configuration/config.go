@@ -12,6 +12,7 @@ type Configuration struct {
 	Address    string `env:"ADDRESS,required"`
 	ListenPort int    `env:"PORT,default=4560"`
 	ListenAddr string `env:"LISTEN_ADDR,default=0.0.0.0"`
+	DataDir    string `env:"DATA_DIR,default=/data"`
 }
 
 var config Configuration

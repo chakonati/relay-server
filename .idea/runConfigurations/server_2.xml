@@ -1,10 +1,11 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="server 2" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="server" />
-    <working_directory value="$PROJECT_DIR$/data/server2" />
+    <working_directory value="$PROJECT_DIR$/" />
     <envs>
       <env name="PORT" value="4562" />
       <env name="ADDRESS" value="192.168.2.110:4562" />
+      <env name="DATA_DIR" value="./data/server2" />
     </envs>
     <kind value="PACKAGE" />
     <package value="server" />

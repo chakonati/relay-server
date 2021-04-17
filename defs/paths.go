@@ -1,11 +1,12 @@
 package defs
 
-import "path"
-
-const dataDir = "data"
+import (
+	"path"
+	"server/configuration"
+)
 
 func DataDir() string {
-	return dataDir
+	return configuration.Config().DataDir
 }
 
 func DatabaseDir() string {
