@@ -17,11 +17,15 @@ type MessagingSendMessageResponse struct{ Error error }
 
 type MessagingSendMessageRequest struct {
 	EncryptedMessage []byte
+	From             string
+	DeviceId         int
 }
 
 func (m *MessageHandler) SendMessage(request MessagingSendMessageRequest) *MessagingSendMessageResponse {
 	return &MessagingSendMessageResponse{messaging.MessageReceived(&defs.Message{
 		EncryptedMessage: request.EncryptedMessage,
+		From:             request.From,
+		DeviceID:         request.DeviceId,
 	})}
 }
 
