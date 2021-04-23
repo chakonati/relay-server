@@ -3,6 +3,8 @@ package persistence
 import (
 	"server/defs"
 
+	"github.com/vmihailenco/msgpack/v5"
+
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -75,4 +77,35 @@ func (m *MessageDAO) FirstID() (uint64, bool, error) {
 		return 0, false, errors.Wrap(err, "could not get first ID")
 	}
 	return id, hasMessages, nil
+}
+
+func (m *MessageDAO) StreamMessages() (chan *defs.Message, chan error) {
+	errChan := make(chan error)
+	msgChan := make(chan *defs.Message)
+
+	go func() {
+		err := messages.db.View(func(tx *bbolt.Tx) error {
+			b := m.bucket(tx)
+
+			c := b.Cursor()
+			for k, v := c.First(); k != nil; k, v = c.Next() {
+				var msg defs.Message
+				err := msgpack.Unmarshal(v, &msg)
+				if err != nil {
+					return err
+				}
+				msgChan <- &msg
+			}
+
+			return nil
+		})
+
+		close(msgChan)
+		if err != nil {
+			errChan <- err
+		}
+		close(errChan)
+	}()
+
+	return msgChan, errChan
 }
