@@ -8,11 +8,11 @@ require (
 	github.com/sethvargo/go-envconfig v0.3.5
 	github.com/stoewer/go-strcase v1.2.0
 	github.com/toowoxx/go-structs v1.2.0
-	github.com/vmihailenco/msgpack/v5 v5.3.1
+	github.com/vmihailenco/msgpack/v5 v5.3.2
 	gitlab.com/xdevs23/go-reflectutil v1.7.0
 	go.etcd.io/bbolt v1.3.5
-	go.step.sm/crypto v0.8.2
-	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
-	golang.org/x/sys v0.0.0-20210507161434-a76c4d0a0096 // indirect
+	go.step.sm/crypto v0.8.3
+	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
+	golang.org/x/sys v0.0.0-20210514084401-e8d321eab015 // indirect
 	nhooyr.io/websocket v1.8.7
 )
